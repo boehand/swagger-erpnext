@@ -12,7 +12,10 @@
   "auth_settings_section",
   "token_based_basicauth",
   "column_break_lxux",
-  "bearerauth"
+  "bearerauth",
+  "doctype_endpoints_section",
+  "doctype_endpoints_description",
+  "doctype_list"
  ],
  "fields": [
   {
@@ -55,12 +58,28 @@
    "fieldname": "bearerauth",
    "fieldtype": "Check",
    "label": "BearerAuth"
+  },
+  {
+   "fieldname": "doctype_endpoints_section",
+   "fieldtype": "Section Break",
+   "label": "DocType-spezifische Endpunkte"
+  },
+  {
+   "fieldname": "doctype_endpoints_description",
+   "fieldtype": "HTML",
+   "options": "<p class=\"text-muted\">Für jeden eingetragenen DocType werden vollständig ausformulierte Endpunkte über die native Frappe REST-API (<code>/api/resource/{DocType}</code>) generiert – inklusive aller Felder, Typen und Pflichtfelder. Das erleichtert das Verständnis der ERPNext-API erheblich.</p>"
+  },
+  {
+   "fieldname": "doctype_list",
+   "fieldtype": "Table",
+   "label": "DocTypes",
+   "options": "Swagger DocType Entry"
   }
  ],
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2024-08-27 09:58:48.621772",
+ "modified": "2025-01-01 00:00:00.000000",
  "modified_by": "Administrator",
  "module": "Swagger UI",
  "name": "Swagger Settings",
