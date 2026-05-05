@@ -1,0 +1,16 @@
+[project]
+name = "erpnext_api_docs"
+authors = [{ name = "boehand" }]
+description = "Generic CRUD REST endpoints for every ERPNext DocType, auto-documented via the swagger app"
+requires-python = ">=3.10"
+readme = "README.md"
+license = { text = "MIT" }
+dynamic = ["version"]
+dependencies = ["pydantic>=2.0.0"]
+
+[build-system]
+requires = ["flit_core >=3.4,<4"]
+build-backend = "flit_core.buildapi"
+
+[tool.flit.module]
+name = "erpnext_api_docs"

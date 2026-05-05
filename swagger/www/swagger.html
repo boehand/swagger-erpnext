@@ -2,28 +2,33 @@
 <html>
 <head>
   <title>Swagger UI</title>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swagger-ui-dist@3/swagger-ui.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/swagger-ui.css">
 </head>
 <body>
   <div id="swagger-ui"></div>
-  <script src="https://cdn.jsdelivr.net/npm/swagger-ui-dist@3/swagger-ui-bundle.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/swagger-ui-dist@3/swagger-ui-standalone-preset.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/swagger-ui-bundle.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/swagger-ui-standalone-preset.js"></script>
   <script>
+    // CSRF token injected at render time by swagger/www/swagger.py
+    var csrfToken = "{{ csrf_token or '' }}";
+
     window.onload = function () {
-      const initializeSwaggerUI = async () => {
-        const ui = SwaggerUIBundle({
-          url: "/swagger.json",
-          dom_id: "#swagger-ui",
-          presets: [SwaggerUIBundle.presets.apis, SwaggerUIStandalonePreset],
-          layout: "StandaloneLayout",
-          requestInterceptor: (request) => {
-            request.headers["X-Frappe-CSRF-Token"] = null;
-            return request;
-          },
-        });
-        window.ui = ui;
-      };
-      initializeSwaggerUI();
+      const ui = SwaggerUIBundle({
+        url: "/swagger.json",
+        dom_id: "#swagger-ui",
+        presets: [SwaggerUIBundle.presets.apis, SwaggerUIStandalonePreset],
+        layout: "StandaloneLayout",
+        requestInterceptor: function (request) {
+          // Frappe requires X-Frappe-CSRF-Token on every state-changing request.
+          // The token is read from the server session at page-render time so it
+          // is always valid for the current logged-in user.
+          if (csrfToken && request.method !== "GET") {
+            request.headers["X-Frappe-CSRF-Token"] = csrfToken;
+          }
+          return request;
+        },
+      });
+      window.ui = ui;
     };
   </script>
 </body>
