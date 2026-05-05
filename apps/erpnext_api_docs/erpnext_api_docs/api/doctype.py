@@ -1,13 +1,12 @@
 """
-doctype.py:
-Generische REST-API-Endpunkte für alle ERPNext-DocTypes.
-Die swagger-App von omkardarves/swagger scannt dieses Verzeichnis
-(erpnext_api_docs/api/) und erzeugt daraus die Swagger UI.
+Generic REST API endpoints for all ERPNext DocTypes.
 
-Funktionen sind absichtlich klein gehalten und delegieren an Frappes
-eingebaute REST-Mechanismen (frappe.client.*). Sie dienen primär dazu,
-die Swagger-App mit @frappe.whitelist()-Funktionen zu füttern, die sie
-in der UI darstellen kann.
+The swagger app scans this directory (erpnext_api_docs/api/) and generates
+the Swagger UI from the functions defined here.
+
+Functions are intentionally thin and delegate to Frappe's built-in REST
+mechanisms. Their main purpose is to expose @frappe.whitelist() callables
+that the swagger generator can discover and document.
 """
 
 from __future__ import annotations
@@ -18,8 +17,8 @@ from typing import Any, Dict, List, Optional
 import frappe
 from frappe import _
 
-# WICHTIG: Das Modul 'swagger' muss direkt importiert werden, damit der
-# Generator die Signatur 'swagger.validate_http_method(...)' per Regex findet.
+# The 'swagger' module must be imported directly so the generator can find
+# the 'swagger.validate_http_method(...)' signature via its regex scan.
 try:
     import swagger
     from swagger.utils import validate_request
@@ -28,7 +27,7 @@ except Exception:
     HAS_SWAGGER_HELPERS = False
 
     def validate_request(model):  # type: ignore
-        """Fallback-Decorator wenn die swagger-App noch nicht installiert ist."""
+        """Fallback decorator used when the swagger app is not yet installed."""
         def deco(fn):
             return fn
         return deco
@@ -153,7 +152,7 @@ def list_documents(
         &fields=["name","customer_name"]
         &limit=20
 
-    Parameters are JSON-encoded strings (URL-encoded) for `filters` and `fields`.
+    `filters` and `fields` are JSON-encoded strings.
 
     Returns:
         {"status": "success", "data": [...], "count": int}
@@ -280,7 +279,7 @@ def delete_document(doctype: str, name: str):
 @frappe.whitelist(allow_guest=False)
 def list_doctypes(module: Optional[str] = None, limit: int = 1000):
     """
-    Return all DocTypes that the current user has read access to.
+    Return all DocTypes the current user has read access to.
 
     GET /api/method/erpnext_api_docs.api.doctype.list_doctypes
         ?module=Selling

@@ -9,7 +9,7 @@ from pydantic import BaseModel
 
 
 # ---------------------------------------------------------------------------
-#  Frappe-Feldtyp → OpenAPI-Schema
+#  Frappe field type → OpenAPI schema mapping
 # ---------------------------------------------------------------------------
 
 _FRAPPE_TYPE_MAP = {
@@ -37,21 +37,21 @@ _FRAPPE_TYPE_MAP = {
     "Currency":         {"type": "number"},
     "Percent":          {"type": "number"},
     "Rating":           {"type": "number"},
-    "Check":            {"type": "integer", "enum": [0, 1], "description": "0 = nein, 1 = ja"},
+    "Check":            {"type": "integer", "enum": [0, 1], "description": "0 = unchecked, 1 = checked"},
     "Date":             {"type": "string", "format": "date"},
     "Datetime":         {"type": "string", "format": "date-time"},
     "Time":             {"type": "string"},
     "JSON":             {"type": "object"},
 }
 
-# Feldtypen, die keine sinnvolle API-Repräsentation haben
+# Field types with no meaningful API representation are skipped entirely
 _SKIP_FIELDTYPES = {
     "Section Break", "Column Break", "Tab Break",
     "HTML", "Heading", "Image", "Fold",
     "Table", "Table MultiSelect",
 }
 
-# Interne Frappe-Metafelder werden vom Response-Schema getrennt behandelt
+# Internal Frappe meta-fields are handled separately in the response schema
 _META_FIELDS = {
     "name", "owner", "creation", "modified", "modified_by",
     "docstatus", "idx", "parent", "parenttype", "parentfield",
@@ -59,7 +59,7 @@ _META_FIELDS = {
 
 
 def _field_to_openapi(field) -> dict | None:
-    """Konvertiert ein Frappe-DocField in ein OpenAPI-Schema-Objekt."""
+    """Convert a Frappe DocField to an OpenAPI schema object."""
     if field.fieldtype in _SKIP_FIELDTYPES:
         return None
 
@@ -84,10 +84,10 @@ def _field_to_openapi(field) -> dict | None:
 
 def _build_doctype_schemas(doctype_name: str) -> tuple[dict, dict, list]:
     """
-    Gibt zurück:
-      write_props  – Felder die per POST/PUT gesendet werden dürfen
-      full_props   – alle Felder inkl. read-only (für Response-Schema)
-      required     – Liste der Pflichtfelder
+    Returns:
+      write_props  – fields allowed in POST/PUT request bodies
+      full_props   – all fields including read-only ones (used in response schema)
+      required     – list of mandatory field names
     """
     meta = frappe.get_meta(doctype_name)
     write_props: dict = {}
@@ -112,35 +112,34 @@ def _build_doctype_schemas(doctype_name: str) -> tuple[dict, dict, list]:
 
 def generate_doctype_resource_paths(swagger: dict, doctype_name: str) -> None:
     """
-    Erzeugt vollständig ausformulierte OpenAPI-Pfade für einen DocType
-    über die native Frappe REST-API:
+    Generate fully typed OpenAPI paths for a DocType using the native Frappe REST API:
 
-      GET  /api/resource/{DocType}          → Liste
-      POST /api/resource/{DocType}          → Anlegen
-      GET  /api/resource/{DocType}/{name}   → Einzeldatensatz
-      PUT  /api/resource/{DocType}/{name}   → Aktualisieren
-      DELETE /api/resource/{DocType}/{name} → Löschen
+      GET    /api/resource/{DocType}         – list
+      POST   /api/resource/{DocType}         – create
+      GET    /api/resource/{DocType}/{name}  – fetch single record
+      PUT    /api/resource/{DocType}/{name}  – update
+      DELETE /api/resource/{DocType}/{name}  – delete
     """
     try:
         write_props, full_props, required = _build_doctype_schemas(doctype_name)
     except Exception as e:
-        frappe.log_error(f"Swagger: DocType '{doctype_name}' konnte nicht geladen werden: {e}")
+        frappe.log_error(f"Swagger: could not load DocType '{doctype_name}': {e}")
         return
 
     # ------------------------------------------------------------------
-    #  Wiederverwendbare Schema-Referenz im components-Block
+    #  Reusable $ref entry in components/schemas
     # ------------------------------------------------------------------
     if "schemas" not in swagger["components"]:
         swagger["components"]["schemas"] = {}
 
     meta_read_only = {
-        "name":        {"type": "string", "readOnly": True, "description": "Primärschlüssel"},
-        "owner":       {"type": "string", "readOnly": True, "description": "Ersteller"},
+        "name":        {"type": "string", "readOnly": True, "description": "Primary key"},
+        "owner":       {"type": "string", "readOnly": True, "description": "Created by"},
         "creation":    {"type": "string", "format": "date-time", "readOnly": True},
         "modified":    {"type": "string", "format": "date-time", "readOnly": True},
         "modified_by": {"type": "string", "readOnly": True},
         "docstatus":   {"type": "integer", "enum": [0, 1, 2], "readOnly": True,
-                        "description": "0=Entwurf, 1=Eingereicht, 2=Abgebrochen"},
+                        "description": "0 = Draft, 1 = Submitted, 2 = Cancelled"},
     }
 
     swagger["components"]["schemas"][doctype_name] = {
@@ -158,7 +157,7 @@ def generate_doctype_resource_paths(swagger: dict, doctype_name: str) -> None:
 
     list_response = {
         "200": {
-            "description": f"Liste von {doctype_name}-Datensätzen",
+            "description": f"List of {doctype_name} records",
             "content": {"application/json": {"schema": {
                 "type": "object",
                 "properties": {"data": {"type": "array", "items": ref}},
@@ -167,7 +166,7 @@ def generate_doctype_resource_paths(swagger: dict, doctype_name: str) -> None:
     }
     item_response = {
         "200": {
-            "description": f"{doctype_name}-Datensatz",
+            "description": f"{doctype_name} record",
             "content": {"application/json": {"schema": {
                 "type": "object",
                 "properties": {"data": ref},
@@ -176,26 +175,26 @@ def generate_doctype_resource_paths(swagger: dict, doctype_name: str) -> None:
     }
 
     # ------------------------------------------------------------------
-    #  /api/resource/{DocType}  – Liste & Anlegen
+    #  /api/resource/{DocType}  –  list & create
     # ------------------------------------------------------------------
     list_path = f"/api/resource/{doctype_name}"
     swagger["paths"][list_path] = {
         "get": {
-            "summary": f"{doctype_name} – Liste",
+            "summary": f"{doctype_name} – List",
             "tags": [doctype_name],
             "parameters": [
                 {
                     "name": "fields",
                     "in": "query",
                     "schema": {"type": "string"},
-                    "description": 'JSON-Array der zurückzugebenden Felder, z.B. `["name","modified"]`',
+                    "description": 'JSON array of fields to return, e.g. `["name","modified"]`',
                     "example": '["name","modified"]',
                 },
                 {
                     "name": "filters",
                     "in": "query",
                     "schema": {"type": "string"},
-                    "description": 'Frappe-Filterarray, z.B. `[["field","=","value"]]`',
+                    "description": 'Frappe filter array, e.g. `[["field","=","value"]]`',
                 },
                 {
                     "name": "limit",
@@ -206,7 +205,7 @@ def generate_doctype_resource_paths(swagger: dict, doctype_name: str) -> None:
                     "name": "limit_start",
                     "in": "query",
                     "schema": {"type": "integer", "default": 0},
-                    "description": "Offset für Paginierung",
+                    "description": "Pagination offset",
                 },
                 {
                     "name": "order_by",
@@ -218,7 +217,7 @@ def generate_doctype_resource_paths(swagger: dict, doctype_name: str) -> None:
             "security": security,
         },
         "post": {
-            "summary": f"{doctype_name} – Anlegen",
+            "summary": f"{doctype_name} – Create",
             "tags": [doctype_name],
             "requestBody": {
                 "required": True,
@@ -230,27 +229,27 @@ def generate_doctype_resource_paths(swagger: dict, doctype_name: str) -> None:
     }
 
     # ------------------------------------------------------------------
-    #  /api/resource/{DocType}/{name}  – Lesen, Aktualisieren, Löschen
+    #  /api/resource/{DocType}/{name}  –  read, update, delete
     # ------------------------------------------------------------------
     name_param = {
         "name": "name",
         "in": "path",
         "required": True,
         "schema": {"type": "string"},
-        "description": f"Name / Primärschlüssel des {doctype_name}-Datensatzes",
+        "description": f"Name / primary key of the {doctype_name} record",
     }
 
     item_path = f"/api/resource/{doctype_name}/{{name}}"
     swagger["paths"][item_path] = {
         "get": {
-            "summary": f"{doctype_name} – Einzeldatensatz",
+            "summary": f"{doctype_name} – Get",
             "tags": [doctype_name],
             "parameters": [name_param],
             "responses": item_response,
             "security": security,
         },
         "put": {
-            "summary": f"{doctype_name} – Aktualisieren",
+            "summary": f"{doctype_name} – Update",
             "tags": [doctype_name],
             "parameters": [name_param],
             "requestBody": {
@@ -261,17 +260,17 @@ def generate_doctype_resource_paths(swagger: dict, doctype_name: str) -> None:
             "security": security,
         },
         "delete": {
-            "summary": f"{doctype_name} – Löschen",
+            "summary": f"{doctype_name} – Delete",
             "tags": [doctype_name],
             "parameters": [name_param],
-            "responses": {"200": {"description": f"{doctype_name} gelöscht"}},
+            "responses": {"200": {"description": f"{doctype_name} deleted"}},
             "security": security,
         },
     }
 
 
 # ---------------------------------------------------------------------------
-#  Bestehende Hilfsfunktionen (unverändert)
+#  Helper functions
 # ---------------------------------------------------------------------------
 
 def find_pydantic_model_in_decorator(node):
@@ -393,13 +392,13 @@ def load_module_from_file(file_path):
 
 
 # ---------------------------------------------------------------------------
-#  Hauptfunktion
+#  Main entry point
 # ---------------------------------------------------------------------------
 
 @frappe.whitelist(allow_guest=True)
 def generate_swagger_json():
-    """Erzeugt swagger.json aus allen api/-Ordnern der installierten Apps
-    sowie aus der DocType-Liste in den Swagger Settings."""
+    """Build swagger.json from all api/ folders of installed apps
+    and from the DocType list configured in Swagger Settings."""
 
     swagger_settings = frappe.get_single("Swagger Settings")
 
@@ -433,7 +432,7 @@ def generate_swagger_json():
         swagger["security"].append({"bearerAuth": []})
 
     # ------------------------------------------------------------------
-    #  1. Generische Endpunkte aus api/-Ordnern
+    #  1. Generic endpoints from each app's api/ folder
     # ------------------------------------------------------------------
     frappe_bench_dir = frappe.utils.get_bench_path()
     file_paths = []
@@ -461,7 +460,7 @@ def generate_swagger_json():
             frappe.log_error(f"Error loading or processing file {file_path}: {str(e)}")
 
     # ------------------------------------------------------------------
-    #  2. DocType-spezifische Endpunkte via /api/resource/{DocType}
+    #  2. DocType-specific endpoints via /api/resource/{DocType}
     # ------------------------------------------------------------------
     doctype_entries = swagger_settings.get("doctype_list") or []
     for row in doctype_entries:
@@ -470,7 +469,7 @@ def generate_swagger_json():
             generate_doctype_resource_paths(swagger, doctype_name)
 
     # ------------------------------------------------------------------
-    #  3. Datei schreiben
+    #  3. Write swagger.json
     # ------------------------------------------------------------------
     www_dir = os.path.join(frappe_bench_dir, "apps", "swagger", "swagger", "www")
     os.makedirs(www_dir, exist_ok=True)
@@ -479,4 +478,4 @@ def generate_swagger_json():
     with open(file_path, "w") as swagger_file:
         json.dump(swagger, swagger_file, indent=4)
 
-    frappe.msgprint("Swagger JSON erfolgreich generiert.")
+    frappe.msgprint("Swagger JSON generated successfully.")

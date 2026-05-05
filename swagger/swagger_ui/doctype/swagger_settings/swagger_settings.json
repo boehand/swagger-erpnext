@@ -67,7 +67,7 @@
   {
    "fieldname": "doctype_endpoints_description",
    "fieldtype": "HTML",
-   "options": "<p class=\"text-muted\">Für jeden eingetragenen DocType werden vollständig ausformulierte Endpunkte über die native Frappe REST-API (<code>/api/resource/{DocType}</code>) generiert – inklusive aller Felder, Typen und Pflichtfelder. Das erleichtert das Verständnis der ERPNext-API erheblich.</p>"
+   "options": "<p class=\"text-muted\">For each DocType listed here, fully typed endpoints are generated via the native Frappe REST API (<code>/api/resource/{DocType}</code>) — including all fields, types, and required markers. This makes it much easier to explore and understand the ERPNext API.</p>"
   },
   {
    "fieldname": "doctype_list",
