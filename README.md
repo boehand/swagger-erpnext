@@ -1,139 +1,141 @@
-## Swagger Generator for Frappe Apps
+# swagger-erpnext
+
+**Dynamic Swagger UI for ERPNext** — forked from [omkardarves/swagger](https://github.com/omkardarves/swagger) and extended with a ready-to-use ERPNext app (`erpnext_api_docs`) that provides generic CRUD endpoints for every DocType and automatically injects the Frappe CSRF token into the Swagger UI.
 
 #### License: MIT
 
-### Overview
+---
 
-This project provides an easy-to-use Swagger UI generator for Frappe applications, enabling developers to automatically generate and explore API documentation.
+## Repository structure
 
-### Features
+```
+swagger-erpnext/
+├── swagger/                    # Swagger UI engine (omkardarves/swagger)
+│   ├── www/
+│   │   ├── swagger.html        # Swagger UI page (CSRF token auto-injected)
+│   │   └── swagger.py          # Frappe get_context() – passes csrf_token to template
+│   ├── swagger_generator.py    # Scans installed apps and builds swagger.json
+│   └── swagger_ui/
+│       └── doctype/
+│           ├── swagger_settings/   # Settings DocType (app name, auth mode)
+│           └── api_error_log/      # Error log DocType
+│
+└── apps/
+    └── erpnext_api_docs/       # Custom ERPNext app – generic DocType CRUD API
+        ├── setup.py / pyproject.toml / requirements.txt
+        └── erpnext_api_docs/
+            ├── hooks.py
+            ├── api/
+            │   └── doctype.py  # @frappe.whitelist() CRUD endpoints
+            └── basemodels/
+                └── doctype.py  # Pydantic v2 models
+```
 
-- **Automatic Swagger UI Generation**: Automatically creates Swagger documentation for all API endpoints in your Frappe custom app.
-- **Customizable**: Specifically designed to work with APIs located in the `api` folder of each installed Custom Frappe app.
-- **Pydantic Model Integration**: Seamlessly integrates with Pydantic models to display request body structures for APIs.
+---
 
-### Setup Instructions
+## Features
 
-1. **API Folder Structure**: 
-   - Ensure your API functions are located in the `app_name/api` folder within your Frappe app. The generator retrieves API endpoints from this directory.
-   - Your project structure should look like this:
-     ```
-     custom_app/
-         ├── README.md
-         ├── pyproject.toml
-         ├── requirements.txt
-         ├── custom_app/
-         │   ├── api/
-         │   │   ├── user.py         # API functions for user operations (POST, PUT, GET, DELETE)
-         │   │   └── auth.py         # API functions for auth operations (POST, PUT, GET, DELETE)
-         │   ├── basemodels/
-         │   │   ├── user.py         # Pydantic models for user APIs
-         │   │   └── auth.py         # Pydantic models for auth APIs
-     ```
+- **Automatic Swagger UI generation** — scans every installed app's `api/` folder and builds a live OpenAPI 3.0 spec
+- **CSRF token auto-injection** — the Frappe session token is resolved server-side at page render time and injected into every non-GET request; no manual copy-pasting required
+- **Generic DocType CRUD** — `erpnext_api_docs` ships five ready-to-use endpoints that work with any ERPNext DocType out of the box
+- **Pydantic v2 validation** — request bodies are validated via `@validate_request(Model)` before they reach business logic
+- **Docker-ready** — `Dockerfile.swagger` builds an image with both apps pre-installed on top of the official `frappe/erpnext:version-16` base
 
-2. **Generating Swagger JSON**:
-   - Navigate to the "Swagger Settings" doctype within your Frappe desk.
-   - Click the "Generate Swagger JSON" button to create the `swagger.json` file, which contains the necessary API documentation.
+---
 
-3. **Accessing Swagger UI**:
-   - The Swagger UI is automatically generated and can be accessed via the `swagger.html` file, allowing you to interact with and test your API.
+## CSRF token — how it works
 
-### Steps to Use Swagger UI
+Frappe protects every state-changing API call with a per-session CSRF token. The previous implementation removed the token header entirely, which bypassed the check but broke installations that enforce it.
 
-1. **Define Pydantic Models for POST and PUT Requests**:
-   ```python
-   import swagger
-   from pydantic import BaseModel
-   import frappe
+The new approach:
 
-   class UserModel(BaseModel):
-      email: str
-      username: str
-      age: int
+1. `swagger/www/swagger.py` — a Frappe `get_context()` function reads `frappe.local.session.data.csrf_token` at request time and passes it to the Jinja template. `no_cache = 1` ensures the token is always fresh.
+2. `swagger/www/swagger.html` — the token is written into a JS variable at render time and injected via `requestInterceptor` for all `POST`, `PUT`, `PATCH`, and `DELETE` calls.
 
-   @frappe.whitelist(allow_guest=True)
-   @validate_request(UserModel)
-   def add_user(validated_data: UserModel):
-      try:
-         swagger.validate_http_method("POST")
-         new_user = frappe.get_doc({
-               "doctype": "User",
-               "email": validated_data.email,
-               "username": validated_data.username,
-               "first_name": validated_data.username,
-               "age": validated_data.age,
-         })
-         new_user.insert(ignore_permissions=True)
-         return {
-               "status": "success",
-               "message": "User created successfully",
-               "data": new_user.as_dict(),
-         }
-      except Exception as e:
-         swagger.log_api_error()
-         return {"status": "error", "message": str(e)}
+---
 
-   class UpdateUserModel(BaseModel):
-      email: str
-      username: str
-      age: int
+## Setup
 
-   @frappe.whitelist()
-   @validate_request(UpdateUserModel)
-   def update_user(user_id: str, validated_data: UpdateUserModel):
-      try:
-         swagger.validate_http_method("PUT")
-         user = frappe.get_doc("User", user_id)
-         user.email = validated_data.email
-         user.username = validated_data.username
-         user.first_name = validated_data.username
-         user.age = validated_data.age
-         user.save(ignore_permissions=True)
-         return {
-               "status": "success",
-               "message": "User updated successfully",
-               "data": user.as_dict(),
-         }
-      except Exception as e:
-         swagger.log_api_error()
-         return {"status": "error", "message": str(e)}
-   ```
+### 1. Install the `swagger` app
 
-2. **Example of GET and DELETE API Requests**:
-   ```python
-   @frappe.whitelist()
-   def get_customer(user_id: str):
-      try:
-         swagger.validate_http_method("GET")
-         customer = frappe.get_doc("User", user_id)
-         return {"status": "success", "data": customer.as_dict()}
-      except frappe.DoesNotExistError:
-         return {"status": "error", "message": "User does not exist"}
-      except Exception as e:
-         swagger.log_api_error()
-         return {"status": "error", "message": str(e)}
+```bash
+bench get-app --branch main https://github.com/boehand/swagger-erpnext
+bench --site <your-site> install-app swagger
+```
 
-   @frappe.whitelist(allow_guest=True)
-   def delete_user(user_id: str):
-      try:
-         swagger.validate_http_method("DELETE")
-         frappe.delete_doc("User", user_id, ignore_permissions=True)
-         return {"status": "success", "message": f"User with ID {user_id} deleted successfully"}
-      except frappe.DoesNotExistError:
-         return {"status": "error", "message": "User does not exist"}
-      except Exception as e:
-         swagger.log_api_error()
-         return {"status": "error", "message": str(e)}
-   ```
+### 2. Install the `erpnext_api_docs` app
 
-### Customization and Automation
+```bash
+bench get-app erpnext_api_docs /path/to/apps/erpnext_api_docs
+bench --site <your-site> install-app erpnext_api_docs
+```
 
-The Swagger generator is straightforward but can be customized and automated further. Feel free to modify the generator script to add more functionality or automate additional steps as needed.
+### 3. Generate the Swagger JSON
 
-### Contributing
+- Open the **Swagger Settings** DocType in the Frappe desk
+- Set the **App Name** and choose an auth mode (Basic Auth or Bearer)
+- Click **Generate Swagger JSON**
 
-Contributions are welcome! If you find any issues or have suggestions for improvements, feel free to open an issue or submit a pull request.
+### 4. Open the Swagger UI
 
-### License
+Navigate to `https://<your-site>/swagger` — the UI loads with the CSRF token already set.
 
-This project is licensed under the MIT license, as outlined in the `license.txt` file.
+---
+
+## Generic DocType endpoints (`erpnext_api_docs`)
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `POST` | `/api/method/erpnext_api_docs.api.doctype.create_document` | Create a document |
+| `GET` | `/api/method/erpnext_api_docs.api.doctype.get_document` | Fetch a single document |
+| `GET` | `/api/method/erpnext_api_docs.api.doctype.list_documents` | List documents with filters |
+| `PUT` | `/api/method/erpnext_api_docs.api.doctype.update_document` | Update a document |
+| `DELETE` | `/api/method/erpnext_api_docs.api.doctype.delete_document` | Delete a document |
+| `GET` | `/api/method/erpnext_api_docs.api.doctype.list_doctypes` | List available DocTypes |
+
+All endpoints require an authenticated session (`allow_guest=False`) and respect Frappe's permission system.
+
+---
+
+## Adding your own app's endpoints
+
+Create an `api/` folder inside your app and add functions that call `swagger.validate_http_method(...)`:
+
+```python
+# myapp/myapp/api/customer.py
+import frappe
+import swagger
+from swagger.validator import validate_request
+from pydantic import BaseModel
+
+class CustomerModel(BaseModel):
+    customer_name: str
+    customer_type: str = "Company"
+
+@frappe.whitelist(allow_guest=False)
+@validate_request(CustomerModel)
+def create_customer(validated_data: CustomerModel = None):
+    swagger.validate_http_method("POST")
+    doc = frappe.get_doc({"doctype": "Customer", **validated_data.model_dump()})
+    doc.insert()
+    frappe.db.commit()
+    return {"status": "success", "data": doc.as_dict()}
+```
+
+After clicking **Generate Swagger JSON** the new endpoint appears in the UI automatically.
+
+---
+
+## Docker
+
+```bash
+docker build -f Dockerfile.swagger -t erpnext-swagger .
+```
+
+The Dockerfile extends `frappe/erpnext:version-16`, installs the `swagger` app via `bench get-app`, and copies `apps/erpnext_api_docs` from the build context.
+
+---
+
+## Contributing
+
+Contributions are welcome — open an issue or submit a pull request.
