@@ -1,105 +1,165 @@
 # swagger-erpnext
 
-**Dynamic Swagger UI for ERPNext** — forked from [omkardarves/swagger](https://github.com/omkardarves/swagger) and extended with a ready-to-use ERPNext app (`erpnext_api_docs`) that provides generic CRUD endpoints for every DocType and automatically injects the Frappe CSRF token into the Swagger UI.
+**Dynamic Swagger UI for ERPNext** — forked from [omkardarves/swagger](https://github.com/omkardarves/swagger) and extended with:
+
+- automatische CSRF-Token-Injektion für alle schreibenden Requests
+- DocType-spezifische Endpunkte mit vollständigen Feldschemata (per Settings konfigurierbar)
+- eine fertige ERPNext-App (`erpnext_api_docs`) mit generischen CRUD-Endpunkten für jeden DocType
 
 #### License: MIT
 
 ---
 
-## Repository structure
+## Repository-Struktur
 
 ```
 swagger-erpnext/
-├── swagger/                    # Swagger UI engine (omkardarves/swagger)
+├── swagger/                          # Swagger-UI-Engine (diese App)
 │   ├── www/
-│   │   ├── swagger.html        # Swagger UI page (CSRF token auto-injected)
-│   │   └── swagger.py          # Frappe get_context() – passes csrf_token to template
-│   ├── swagger_generator.py    # Scans installed apps and builds swagger.json
+│   │   ├── swagger.html              # Swagger-UI-Seite (CSRF-Token automatisch gesetzt)
+│   │   └── swagger.py               # Frappe get_context() – liest CSRF-Token aus der Session
+│   ├── swagger_generator.py         # Baut swagger.json aus api/-Ordnern + DocType-Liste
 │   └── swagger_ui/
 │       └── doctype/
-│           ├── swagger_settings/   # Settings DocType (app name, auth mode)
-│           └── api_error_log/      # Error log DocType
+│           ├── swagger_settings/    # Einstellungs-DocType (App-Name, Auth, DocType-Liste)
+│           ├── swagger_doctype_entry/  # Child-Table für die DocType-Liste
+│           └── api_error_log/       # Fehlerprotokoll-DocType
 │
 └── apps/
-    └── erpnext_api_docs/       # Custom ERPNext app – generic DocType CRUD API
+    └── erpnext_api_docs/            # Eigene ERPNext-App – generische DocType-CRUD-API
         ├── setup.py / pyproject.toml / requirements.txt
         └── erpnext_api_docs/
             ├── hooks.py
             ├── api/
-            │   └── doctype.py  # @frappe.whitelist() CRUD endpoints
+            │   └── doctype.py       # @frappe.whitelist() CRUD-Endpunkte
             └── basemodels/
-                └── doctype.py  # Pydantic v2 models
+                └── doctype.py       # Pydantic-v2-Modelle
 ```
 
 ---
 
 ## Features
 
-- **Automatic Swagger UI generation** — scans every installed app's `api/` folder and builds a live OpenAPI 3.0 spec
-- **CSRF token auto-injection** — the Frappe session token is resolved server-side at page render time and injected into every non-GET request; no manual copy-pasting required
-- **Generic DocType CRUD** — `erpnext_api_docs` ships five ready-to-use endpoints that work with any ERPNext DocType out of the box
-- **Pydantic v2 validation** — request bodies are validated via `@validate_request(Model)` before they reach business logic
-- **Docker-ready** — `Dockerfile.swagger` builds an image with both apps pre-installed on top of the official `frappe/erpnext:version-16` base
-
----
-
-## CSRF token — how it works
-
-Frappe protects every state-changing API call with a per-session CSRF token. The previous implementation removed the token header entirely, which bypassed the check but broke installations that enforce it.
-
-The new approach:
-
-1. `swagger/www/swagger.py` — a Frappe `get_context()` function reads `frappe.local.session.data.csrf_token` at request time and passes it to the Jinja template. `no_cache = 1` ensures the token is always fresh.
-2. `swagger/www/swagger.html` — the token is written into a JS variable at render time and injected via `requestInterceptor` for all `POST`, `PUT`, `PATCH`, and `DELETE` calls.
+- **Automatische Swagger-UI-Generierung** — scannt die `api/`-Ordner aller installierten Apps und erzeugt eine OpenAPI-3.0-Spezifikation
+- **CSRF-Token-Injektion** — der Frappe-Session-Token wird serverseitig beim Seitenrendering gelesen und via `requestInterceptor` in jeden nicht-GET-Request eingebaut; kein manuelles Kopieren nötig
+- **DocType-spezifische Endpunkte** — in den Settings einfach DocType-Namen eintragen; der Generator erzeugt daraus vollständig typisierte OpenAPI-Pfade mit allen Feldern, Typen und Pflichtfeldern
+- **Generische CRUD-API** — `erpnext_api_docs` liefert fünf einsatzbereite Endpunkte, die mit jedem ERPNext-DocType funktionieren
+- **Pydantic-v2-Validierung** — Request-Bodies werden per `@validate_request(Model)` validiert
+- **Docker-ready** — `Dockerfile.swagger` baut ein Image auf Basis von `frappe/erpnext:version-16`
 
 ---
 
 ## Setup
 
-### 1. Install the `swagger` app
+### 1. `swagger`-App installieren
 
 ```bash
 bench get-app --branch main https://github.com/boehand/swagger-erpnext
-bench --site <your-site> install-app swagger
+bench --site <deine-site> install-app swagger
 ```
 
-### 2. Install the `erpnext_api_docs` app
+### 2. `erpnext_api_docs`-App installieren
 
 ```bash
-bench get-app erpnext_api_docs /path/to/apps/erpnext_api_docs
-bench --site <your-site> install-app erpnext_api_docs
+# App aus dem apps/-Unterordner dieses Repos registrieren
+bench get-app erpnext_api_docs /pfad/zum/repo/apps/erpnext_api_docs
+bench --site <deine-site> install-app erpnext_api_docs
 ```
 
-### 3. Generate the Swagger JSON
+### 3. Swagger JSON generieren
 
-- Open the **Swagger Settings** DocType in the Frappe desk
-- Set the **App Name** and choose an auth mode (Basic Auth or Bearer)
-- Click **Generate Swagger JSON**
+- Im Frappe Desk den DocType **Swagger Settings** öffnen
+- **App Name** setzen, Auth-Modus wählen, DocType-Liste befüllen (siehe unten)
+- Auf **Generate Swagger JSON** klicken
 
-### 4. Open the Swagger UI
+### 4. Swagger UI öffnen
 
-Navigate to `https://<your-site>/swagger` — the UI loads with the CSRF token already set.
-
----
-
-## Generic DocType endpoints (`erpnext_api_docs`)
-
-| Method | Path | Description |
-|--------|------|-------------|
-| `POST` | `/api/method/erpnext_api_docs.api.doctype.create_document` | Create a document |
-| `GET` | `/api/method/erpnext_api_docs.api.doctype.get_document` | Fetch a single document |
-| `GET` | `/api/method/erpnext_api_docs.api.doctype.list_documents` | List documents with filters |
-| `PUT` | `/api/method/erpnext_api_docs.api.doctype.update_document` | Update a document |
-| `DELETE` | `/api/method/erpnext_api_docs.api.doctype.delete_document` | Delete a document |
-| `GET` | `/api/method/erpnext_api_docs.api.doctype.list_doctypes` | List available DocTypes |
-
-All endpoints require an authenticated session (`allow_guest=False`) and respect Frappe's permission system.
+`https://<deine-site>/swagger` — die UI lädt mit bereits gesetztem CSRF-Token.
 
 ---
 
-## Adding your own app's endpoints
+## DocType-spezifische Endpunkte konfigurieren
 
-Create an `api/` folder inside your app and add functions that call `swagger.validate_http_method(...)`:
+Im Abschnitt **„DocType-spezifische Endpunkte"** der Swagger Settings gibt es eine Tabelle, in die beliebig viele ERPNext-DocTypes eingetragen werden können:
+
+| Feld | Beschreibung |
+|------|-------------|
+| **DocType** | Name des gewünschten DocTypes, z.B. `Customer`, `Sales Invoice`, `Item` |
+
+Nach dem Klick auf **Generate Swagger JSON** erzeugt der Generator für jeden Eintrag fünf vollständig ausformulierte Endpunkte auf der **nativen Frappe REST-API** (`/api/resource/…`):
+
+| Methode | Pfad | Beschreibung |
+|---------|------|-------------|
+| `GET` | `/api/resource/{DocType}` | Liste – mit Filtern, Feldauswahl, Limit, Paginierung |
+| `POST` | `/api/resource/{DocType}` | Anlegen – nur schreibbare Felder, Pflichtfelder markiert |
+| `GET` | `/api/resource/{DocType}/{name}` | Einzeldatensatz |
+| `PUT` | `/api/resource/{DocType}/{name}` | Aktualisieren |
+| `DELETE` | `/api/resource/{DocType}/{name}` | Löschen |
+
+Da dies echte Frappe-REST-Pfade sind, funktioniert **„Try it out"** in der Swagger UI direkt — der CSRF-Token wird automatisch mitgesendet.
+
+### Was wird aus den Feldern?
+
+Der Generator liest alle Felder des DocTypes per `frappe.get_meta()` und baut daraus OpenAPI-Schemas:
+
+- **Feldtypen** werden gemappt: `Data` → `string`, `Int` → `integer`, `Currency` → `number`, `Check` → `integer enum [0,1]`, `Date` → `string (format: date)`, `Select` → `string` mit automatischem `enum` aus den Options, usw.
+- **Pflichtfelder** (`reqd = 1`) erscheinen in `required`
+- **Read-only-Felder** erscheinen nur im Response-Schema, nicht im Write-Body
+- **Metafelder** (`name`, `owner`, `creation`, `modified` …) werden automatisch als `readOnly` ins Response-Schema aufgenommen
+- **Technische Felder** (Section Break, Column Break, Table-Kindtabellen) werden übersprungen
+
+Jeder DocType bekommt in der Swagger UI einen eigenen **Tag** (eingeklappte Gruppe) und einen `$ref`-Eintrag in `components/schemas`.
+
+### Beispiel: Konfiguration für ERPNext-Grunddaten
+
+Typische Einträge, um die ERPNext-API besser zu verstehen:
+
+```
+Customer
+Supplier
+Item
+Sales Order
+Purchase Order
+Sales Invoice
+Purchase Invoice
+Payment Entry
+Delivery Note
+Stock Entry
+```
+
+---
+
+## Generische CRUD-Endpunkte (`erpnext_api_docs`)
+
+Diese Endpunkte akzeptieren jeden DocType als Parameter — praktisch wenn man schnell etwas testen möchte, ohne die Settings anzupassen.
+
+| Methode | Pfad | Beschreibung |
+|---------|------|-------------|
+| `POST` | `/api/method/erpnext_api_docs.api.doctype.create_document` | Dokument anlegen |
+| `GET` | `/api/method/erpnext_api_docs.api.doctype.get_document` | Einzeldokument abrufen |
+| `GET` | `/api/method/erpnext_api_docs.api.doctype.list_documents` | Liste mit Filtern |
+| `PUT` | `/api/method/erpnext_api_docs.api.doctype.update_document` | Dokument aktualisieren |
+| `DELETE` | `/api/method/erpnext_api_docs.api.doctype.delete_document` | Dokument löschen |
+| `GET` | `/api/method/erpnext_api_docs.api.doctype.list_doctypes` | Verfügbare DocTypes |
+
+Alle Endpunkte erfordern eine authentifizierte Session (`allow_guest=False`) und respektieren das Frappe-Berechtigungssystem.
+
+---
+
+## CSRF-Token — wie es funktioniert
+
+Frappe schützt jeden schreibenden API-Aufruf mit einem session-gebundenen CSRF-Token. Die ursprüngliche Implementierung hat den Token-Header auf `null` gesetzt (also entfernt), was den Check umgangen hat.
+
+Der neue Ansatz:
+
+1. **`swagger/www/swagger.py`** — eine Frappe-`get_context()`-Funktion liest `frappe.local.session.data.csrf_token` beim Seitenrendering und übergibt ihn ans Jinja-Template. `no_cache = 1` sorgt dafür, dass der Token immer aktuell ist.
+2. **`swagger/www/swagger.html`** — der Token wird beim Rendern in eine JS-Variable geschrieben und via `requestInterceptor` für alle `POST`-, `PUT`-, `PATCH`- und `DELETE`-Calls gesetzt.
+
+---
+
+## Eigene App-Endpunkte hinzufügen
+
+Einen `api/`-Ordner in der eigenen App anlegen und Funktionen mit `swagger.validate_http_method(...)` ergänzen:
 
 ```python
 # myapp/myapp/api/customer.py
@@ -122,7 +182,7 @@ def create_customer(validated_data: CustomerModel = None):
     return {"status": "success", "data": doc.as_dict()}
 ```
 
-After clicking **Generate Swagger JSON** the new endpoint appears in the UI automatically.
+Nach dem nächsten Klick auf **Generate Swagger JSON** erscheint der neue Endpunkt automatisch in der UI.
 
 ---
 
@@ -132,10 +192,10 @@ After clicking **Generate Swagger JSON** the new endpoint appears in the UI auto
 docker build -f Dockerfile.swagger -t erpnext-swagger .
 ```
 
-The Dockerfile extends `frappe/erpnext:version-16`, installs the `swagger` app via `bench get-app`, and copies `apps/erpnext_api_docs` from the build context.
+Das Dockerfile erweitert `frappe/erpnext:version-16`, installiert die `swagger`-App via `bench get-app` und kopiert `apps/erpnext_api_docs` aus dem Build-Kontext.
 
 ---
 
 ## Contributing
 
-Contributions are welcome — open an issue or submit a pull request.
+Contributions sind willkommen — Issue öffnen oder Pull Request einreichen.
