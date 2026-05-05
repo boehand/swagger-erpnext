@@ -1,15 +1,16 @@
 [project]
 name = "swagger"
 authors = [
-    { name = "Omkar Darves", email = "omkardarves@gmail.com"}
+    { name = "boehand" }
 ]
-description = "Dynamic Swagger UI for frappe Apps"
+description = "Dynamic Swagger UI for ERPNext – with automatic CSRF token injection"
 requires-python = ">=3.10"
 readme = "README.md"
 dynamic = ["version"]
 dependencies = [
     # "frappe~=15.0.0", # Installed and managed by bench.
-    "validator==0.7.1"
+    "validator==0.7.1",
+    "pydantic>=2.0.0"
 ]
 
 [build-system]
