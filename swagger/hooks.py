@@ -6,6 +6,12 @@ app_email = "omkardarves@gmail.com"
 app_license = "mit"
 # required_apps = []
 
+# Sync new DocTypes (Swagger DocType Entry, updated Swagger Settings) without
+# requiring a manual bench migrate. after_install covers fresh installs;
+# boot_session covers existing installs after a code update.
+after_install = "swagger.setup.after_install"
+boot_session = "swagger.setup.boot_session"
+
 # Includes in <head>
 # ------------------
 
