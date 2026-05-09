@@ -153,7 +153,7 @@ def generate_doctype_resource_paths(swagger: dict, doctype_name: str) -> None:
 
     ref = {"$ref": f"#/components/schemas/{doctype_name}"}
 
-    security = [{"basicAuth": []}]
+    security = [{"FrappeToken": []}]
 
     list_response = {
         "200": {
@@ -375,7 +375,7 @@ def process_function(app_name, module_name, func_name, func, swagger, module):
             "parameters": params,
             "requestBody": request_body if request_body else None,
             "responses": responses,
-            "security": [{"basicAuth": []}],
+            "security": [{"FrappeToken": []}],
         }
     except Exception as e:
         frappe.log_error(
@@ -412,14 +412,24 @@ def generate_swagger_json():
         "components": {},
     }
 
-    if swagger_settings.token_based_basicauth or swagger_settings.bearerauth:
-        swagger["components"]["securitySchemes"] = {}
-        swagger["security"] = []
+    # FrappeToken is always present so the Authorize button is always visible.
+    # Frappe's token auth uses the format:  Authorization: token <api_key>:<api_secret>
+    # which maps to an OpenAPI apiKey scheme, not http/basic.
+    swagger["components"]["securitySchemes"] = {
+        "FrappeToken": {
+            "type": "apiKey",
+            "in": "header",
+            "name": "Authorization",
+            "description": "Frappe API token. Enter: `token <api_key>:<api_secret>`",
+        }
+    }
+    swagger["security"] = [{"FrappeToken": []}]
 
     if swagger_settings.token_based_basicauth:
         swagger["components"]["securitySchemes"]["basicAuth"] = {
             "type": "http",
             "scheme": "basic",
+            "description": "HTTP Basic Auth with Frappe username and password",
         }
         swagger["security"].append({"basicAuth": []})
 
