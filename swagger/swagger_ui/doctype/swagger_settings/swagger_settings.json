@@ -62,7 +62,7 @@
   {
    "fieldname": "doctype_endpoints_section",
    "fieldtype": "Section Break",
-   "label": "DocType-spezifische Endpunkte"
+   "label": "DocType Endpoints"
   },
   {
    "fieldname": "doctype_endpoints_description",
