@@ -19,6 +19,7 @@
         presets: [SwaggerUIBundle.presets.apis, SwaggerUIStandalonePreset],
         layout: "StandaloneLayout",
         persistAuthorization: true,
+        docExpansion: "none",
         requestInterceptor: function (request) {
           // Frappe requires X-Frappe-CSRF-Token on every state-changing request.
           // The token is read from the server session at page-render time so it
