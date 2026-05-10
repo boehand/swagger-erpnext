@@ -1,0 +1,64 @@
+{
+ "charts": [],
+ "content": "[]",
+ "creation": "2025-01-01 00:00:00.000000",
+ "doctype": "Workspace",
+ "extends_another_page": 0,
+ "hide_custom": 0,
+ "icon": "",
+ "idx": 0,
+ "is_default": 0,
+ "is_hidden": 0,
+ "label": "Swagger UI",
+ "links": [
+  {
+   "dependencies": "",
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Swagger UI",
+   "link_to": "swagger",
+   "link_type": "URL",
+   "onboard": 1,
+   "type": "Link"
+  },
+  {
+   "dependencies": "",
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Swagger Settings",
+   "link_to": "Swagger Settings",
+   "link_type": "DocType",
+   "onboard": 1,
+   "type": "Link"
+  }
+ ],
+ "modified": "2025-01-01 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Swagger UI",
+ "name": "Swagger UI",
+ "owner": "Administrator",
+ "parent_page": "",
+ "public": 1,
+ "restrict_to_domain": "",
+ "roles": [],
+ "sequence_id": 99,
+ "shortcuts": [
+  {
+   "color": "Green",
+   "format": "",
+   "label": "Open Swagger UI",
+   "link_to": "swagger",
+   "stats_filter": "",
+   "type": "URL"
+  },
+  {
+   "color": "Blue",
+   "format": "",
+   "label": "Swagger Settings",
+   "link_to": "Swagger Settings",
+   "stats_filter": "",
+   "type": "DocType"
+  }
+ ],
+ "title": "Swagger UI"
+}
