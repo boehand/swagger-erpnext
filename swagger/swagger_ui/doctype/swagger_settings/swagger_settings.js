@@ -1,6 +1,10 @@
 frappe.ui.form.on("Swagger Settings", {
     refresh: function (frm) {
-        // Custom button opens the DocType picker dialog
+        // Hide the default "Add Row" button — the custom picker replaces it.
+        let grid = frm.get_field("doctype_list").grid;
+        grid.cannot_add_rows = true;
+        grid.wrapper.find(".grid-add-row").hide();
+
         frm.add_custom_button(__("Add DocTypes"), function () {
             show_doctype_picker(frm);
         });
