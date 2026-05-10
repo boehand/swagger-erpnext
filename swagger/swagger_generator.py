@@ -396,10 +396,14 @@ def load_module_from_file(file_path):
 # ---------------------------------------------------------------------------
 
 @frappe.whitelist(allow_guest=True)
-def generate_swagger_json():
+def generate_swagger_json(doctype_list=None):
     """Build swagger.json from all api/ folders of installed apps
-    and from the DocType list configured in Swagger Settings."""
+    and from the DocType list configured in Swagger Settings.
 
+    doctype_list – optional JSON-encoded list of DocType names supplied by the
+                   caller (e.g. the current unsaved form state).  When omitted
+                   the persisted value from Swagger Settings is used instead.
+    """
     swagger_settings = frappe.get_single("Swagger Settings")
 
     swagger = {
@@ -472,11 +476,18 @@ def generate_swagger_json():
     # ------------------------------------------------------------------
     #  2. DocType-specific endpoints via /api/resource/{DocType}
     # ------------------------------------------------------------------
-    doctype_entries = swagger_settings.get("doctype_list") or []
-    for row in doctype_entries:
-        doctype_name = (row.get("doctype_name") if isinstance(row, dict) else getattr(row, "doctype_name", None))
-        if doctype_name:
-            generate_doctype_resource_paths(swagger, doctype_name)
+    if doctype_list is not None:
+        # Caller passed the current (possibly unsaved) form state as a JSON list.
+        names = json.loads(doctype_list) if isinstance(doctype_list, str) else (doctype_list or [])
+        for doctype_name in names:
+            if doctype_name:
+                generate_doctype_resource_paths(swagger, doctype_name)
+    else:
+        doctype_entries = swagger_settings.get("doctype_list") or []
+        for row in doctype_entries:
+            doctype_name = (row.get("doctype_name") if isinstance(row, dict) else getattr(row, "doctype_name", None))
+            if doctype_name:
+                generate_doctype_resource_paths(swagger, doctype_name)
 
     # ------------------------------------------------------------------
     #  3. Write swagger.json
