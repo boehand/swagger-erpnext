@@ -29,10 +29,14 @@ frappe.ui.form.on("Swagger Settings", {
             freeze: true,
             freeze_message: __("Generating Swagger JSON…"),
             callback: function () {
-                frappe.show_alert({
-                    message: __("Swagger JSON generated successfully"),
-                    indicator: "green",
-                });
+                // Reload the iframe so it shows the freshly generated spec.
+                let field = frm.get_field("swagger_ui_preview");
+                if (field && field.$wrapper) {
+                    let $iframe = field.$wrapper.find(".swagger-preview-iframe");
+                    if ($iframe.length) {
+                        $iframe.attr("src", $iframe.attr("src"));
+                    }
+                }
             },
         });
     },

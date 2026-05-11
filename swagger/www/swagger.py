@@ -1,15 +1,12 @@
+import json
+import os
+
 import frappe
 
-# Disable page caching so the CSRF token is always fresh for the current session.
 no_cache = 1
 
 
 def get_context(context):
-    """Inject the current session's CSRF token into the Swagger UI template.
-
-    Frappe rotates the CSRF token per session. By resolving it server-side at
-    render time we avoid any client-side dance with cookies or extra API calls.
-    """
     csrf_token = ""
     try:
         session_data = getattr(frappe.local, "session", None)
@@ -18,3 +15,23 @@ def get_context(context):
     except Exception:
         pass
     context.csrf_token = csrf_token
+
+    # Load the swagger spec and embed it inline so the page works
+    # regardless of how Frappe/nginx serves static files.
+    file_path = frappe.get_site_path("public", "files", "swagger.json")
+    if not os.path.exists(file_path):
+        try:
+            from swagger.swagger_generator import generate_swagger_json
+            generate_swagger_json()
+        except Exception:
+            frappe.log_error(frappe.get_traceback(), "Swagger: auto-generate on page load failed")
+
+    try:
+        with open(file_path) as f:
+            context.swagger_spec = json.load(f)
+    except Exception:
+        context.swagger_spec = {
+            "openapi": "3.0.0",
+            "info": {"title": "API", "version": "1.0.0"},
+            "paths": {},
+        }
