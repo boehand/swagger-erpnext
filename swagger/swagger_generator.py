@@ -512,9 +512,7 @@ def generate_swagger_json(doctype_list=None):
                 generate_doctype_resource_paths(swagger, doctype_name)
 
     # ------------------------------------------------------------------
-    #  3. Write swagger.json into the site's public/files directory.
-    #     Frappe/nginx serves sites/<site>/public/files/ at /files/, so the
-    #     spec is reachable at /files/swagger.json without any extra route.
+    #  3. Write swagger.json and validate before reporting success.
     # ------------------------------------------------------------------
     files_dir = frappe.get_site_path("public", "files")
     os.makedirs(files_dir, exist_ok=True)
@@ -523,4 +521,18 @@ def generate_swagger_json(doctype_list=None):
     with open(file_path, "w") as swagger_file:
         json.dump(swagger, swagger_file, indent=4)
 
-    frappe.msgprint("Swagger JSON generated successfully.")
+    # Validate: read back the file and confirm it is parseable.
+    try:
+        with open(file_path) as f:
+            parsed = json.load(f)
+        if not parsed.get("openapi") or not isinstance(parsed.get("paths"), dict):
+            frappe.throw("swagger.json was written but contains an invalid OpenAPI structure.")
+    except (OSError, json.JSONDecodeError) as exc:
+        frappe.throw(f"swagger.json could not be validated after writing: {exc}")
+
+    path_count = len(swagger.get("paths", {}))
+    frappe.msgprint(
+        f"Swagger JSON generated successfully — {path_count} endpoint(s) documented.",
+        alert=True,
+        indicator="green",
+    )

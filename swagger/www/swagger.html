@@ -9,21 +9,21 @@
   <script src="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/swagger-ui-bundle.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/swagger-ui-standalone-preset.js"></script>
   <script>
-    // CSRF token injected at render time by swagger/www/swagger.py
+    // CSRF token and swagger spec are injected server-side at render time.
+    // Using spec: (inline) instead of url: avoids any static file serving
+    // issues — the OpenAPI JSON is embedded directly in this page.
     var csrfToken = "{{ csrf_token or '' }}";
+    var swaggerSpec = {{ swagger_spec | tojson }};
 
     window.onload = function () {
       const ui = SwaggerUIBundle({
-        url: "/files/swagger.json",
+        spec: swaggerSpec,
         dom_id: "#swagger-ui",
         presets: [SwaggerUIBundle.presets.apis, SwaggerUIStandalonePreset],
         layout: "StandaloneLayout",
         persistAuthorization: true,
         docExpansion: "none",
         requestInterceptor: function (request) {
-          // Frappe requires X-Frappe-CSRF-Token on every state-changing request.
-          // The token is read from the server session at page-render time so it
-          // is always valid for the current logged-in user.
           if (csrfToken && request.method !== "GET") {
             request.headers["X-Frappe-CSRF-Token"] = csrfToken;
           }
