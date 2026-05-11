@@ -8,6 +8,34 @@ frappe.ui.form.on("Swagger Settings", {
         frm.add_custom_button(__("Add DocTypes"), function () {
             show_doctype_picker(frm);
         });
+
+        frm.add_custom_button(__("Open Swagger UI"), function () {
+            window.open("/swagger", "_blank");
+        });
+
+        // Render an inline Swagger UI iframe below the form fields.
+        if (!frm.swagger_iframe_rendered) {
+            frm.swagger_iframe_rendered = true;
+            let $section = $(`
+                <div class="swagger-iframe-section" style="margin-top:24px;">
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+                        <h5 style="margin:0;">${__("Swagger UI Preview")}</h5>
+                        <button class="btn btn-xs btn-default swagger-reload-btn">${__("Reload")}</button>
+                    </div>
+                    <iframe src="/swagger"
+                        style="width:100%;height:700px;border:1px solid var(--border-color,#d1d8dd);border-radius:4px;"
+                        frameborder="0"
+                        id="swagger-preview-iframe">
+                    </iframe>
+                </div>
+            `);
+            frm.layout.wrapper.append($section);
+
+            $section.find(".swagger-reload-btn").on("click", function () {
+                let iframe = document.getElementById("swagger-preview-iframe");
+                iframe.src = iframe.src;
+            });
+        }
     },
 
     generate_swagger_json: function (frm) {

@@ -396,6 +396,26 @@ def load_module_from_file(file_path):
 # ---------------------------------------------------------------------------
 
 @frappe.whitelist(allow_guest=True)
+def get_swagger_json():
+    """Return the cached swagger.json content.
+
+    Generates it on-the-fly if the file does not yet exist so the first
+    request after install always succeeds.
+    """
+    www_dir = os.path.join(frappe.utils.get_bench_path(), "apps", "swagger", "swagger", "www")
+    file_path = os.path.join(www_dir, "swagger.json")
+
+    if not os.path.exists(file_path):
+        generate_swagger_json()
+
+    with open(file_path) as f:
+        data = json.load(f)
+
+    frappe.response["type"] = "json"
+    frappe.response["message"] = data
+
+
+@frappe.whitelist(allow_guest=True)
 def generate_swagger_json(doctype_list=None):
     """Build swagger.json from all api/ folders of installed apps
     and from the DocType list configured in Swagger Settings.
