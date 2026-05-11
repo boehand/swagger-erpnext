@@ -403,8 +403,7 @@ def get_swagger_json():
     {"message": ...}.  We bypass that by writing directly to
     frappe.response so the Swagger UI receives a plain OpenAPI document.
     """
-    www_dir = os.path.join(frappe.utils.get_bench_path(), "apps", "swagger", "swagger", "www")
-    file_path = os.path.join(www_dir, "swagger.json")
+    file_path = os.path.join(frappe.get_site_path("public"), "swagger.json")
 
     if not os.path.exists(file_path):
         generate_swagger_json()
@@ -513,12 +512,13 @@ def generate_swagger_json(doctype_list=None):
                 generate_doctype_resource_paths(swagger, doctype_name)
 
     # ------------------------------------------------------------------
-    #  3. Write swagger.json
+    #  3. Write swagger.json to the site's public directory so it is
+    #     served as a plain static file at /swagger.json by nginx/gunicorn.
     # ------------------------------------------------------------------
-    www_dir = os.path.join(frappe_bench_dir, "apps", "swagger", "swagger", "www")
-    os.makedirs(www_dir, exist_ok=True)
+    public_dir = frappe.get_site_path("public")
+    os.makedirs(public_dir, exist_ok=True)
 
-    file_path = os.path.join(www_dir, "swagger.json")
+    file_path = os.path.join(public_dir, "swagger.json")
     with open(file_path, "w") as swagger_file:
         json.dump(swagger, swagger_file, indent=4)
 
