@@ -397,10 +397,11 @@ def load_module_from_file(file_path):
 
 @frappe.whitelist(allow_guest=True)
 def get_swagger_json():
-    """Return the cached swagger.json content.
+    """Serve swagger.json as a raw JSON response (no Frappe envelope).
 
-    Generates it on-the-fly if the file does not yet exist so the first
-    request after install always succeeds.
+    Frappe's whitelisted methods normally wrap the return value in
+    {"message": ...}.  We bypass that by writing directly to
+    frappe.response so the Swagger UI receives a plain OpenAPI document.
     """
     www_dir = os.path.join(frappe.utils.get_bench_path(), "apps", "swagger", "swagger", "www")
     file_path = os.path.join(www_dir, "swagger.json")
@@ -411,8 +412,10 @@ def get_swagger_json():
     with open(file_path) as f:
         data = json.load(f)
 
+    # Write the OpenAPI dict directly into frappe.response so it is
+    # serialised at the top level instead of being nested under "message".
+    frappe.response.update(data)
     frappe.response["type"] = "json"
-    frappe.response["message"] = data
 
 
 @frappe.whitelist(allow_guest=True)
