@@ -15,7 +15,9 @@
   "bearerauth",
   "doctype_endpoints_section",
   "doctype_endpoints_description",
-  "doctype_list"
+  "doctype_list",
+  "swagger_ui_section",
+  "swagger_ui_preview"
  ],
  "fields": [
   {
@@ -74,6 +76,16 @@
    "fieldtype": "Table",
    "label": "DocTypes",
    "options": "Swagger DocType Entry"
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "swagger_ui_section",
+   "fieldtype": "Section Break",
+   "label": "Swagger UI"
+  },
+  {
+   "fieldname": "swagger_ui_preview",
+   "fieldtype": "HTML"
   }
  ],
  "index_web_pages_for_search": 1,

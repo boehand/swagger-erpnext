@@ -13,30 +13,7 @@ frappe.ui.form.on("Swagger Settings", {
             window.open("/swagger", "_blank");
         });
 
-        // Render an inline Swagger UI iframe below the form fields.
-        // Re-render on every refresh (Frappe clears the form body each time).
-        let $existing = $(frm.wrapper).find(".swagger-iframe-section");
-        if ($existing.length) {
-            $existing.remove();
-        }
-        let $section = $(`
-            <div class="swagger-iframe-section" style="margin-top:24px;padding:0 15px 24px;">
-                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
-                    <h5 style="margin:0;">${__("Swagger UI Preview")}</h5>
-                    <button class="btn btn-xs btn-default swagger-reload-btn">${__("Reload")}</button>
-                </div>
-                <iframe src="/swagger"
-                    style="width:100%;height:700px;border:1px solid var(--border-color,#d1d8dd);border-radius:4px;"
-                    frameborder="0">
-                </iframe>
-            </div>
-        `);
-        $(frm.wrapper).find(".page-form, .form-page").first().append($section);
-
-        $section.find(".swagger-reload-btn").on("click", function () {
-            let $iframe = $section.find("iframe");
-            $iframe.attr("src", $iframe.attr("src"));
-        });
+        render_swagger_iframe(frm);
     },
 
     generate_swagger_json: function (frm) {
@@ -60,6 +37,37 @@ frappe.ui.form.on("Swagger Settings", {
         });
     },
 });
+
+// ---------------------------------------------------------------------------
+//  Swagger UI iframe — rendered into the swagger_ui_preview HTML field so
+//  the whole Swagger experience lives inside the Settings page.
+// ---------------------------------------------------------------------------
+
+function render_swagger_iframe(frm) {
+    let field = frm.get_field("swagger_ui_preview");
+    if (!field || !field.$wrapper) {
+        return;
+    }
+
+    let html = `
+        <div class="swagger-iframe-wrapper" style="margin-top:8px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+                <span class="text-muted">${__("Live preview of the generated API documentation.")}</span>
+                <button class="btn btn-xs btn-default swagger-reload-btn">${__("Reload")}</button>
+            </div>
+            <iframe class="swagger-preview-iframe" src="/swagger"
+                style="width:100%;height:750px;border:1px solid var(--border-color,#d1d8dd);border-radius:4px;background:#fff;"
+                frameborder="0">
+            </iframe>
+        </div>
+    `;
+
+    field.$wrapper.html(html);
+    field.$wrapper.find(".swagger-reload-btn").on("click", function () {
+        let $iframe = field.$wrapper.find(".swagger-preview-iframe");
+        $iframe.attr("src", $iframe.attr("src"));
+    });
+}
 
 // ---------------------------------------------------------------------------
 //  DocType picker dialog
