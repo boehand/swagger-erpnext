@@ -9,9 +9,9 @@ frappe.ui.form.on("Swagger Settings", {
             show_doctype_picker(frm);
         });
 
-        frm.add_custom_button(__("Open Swagger UI"), function () {
+        frm.page.set_primary_action(__("Open Swagger UI"), function () {
             window.open("/swagger", "_blank");
-        });
+        }, "external-link");
 
         render_swagger_iframe(frm);
     },
